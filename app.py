@@ -1,10 +1,11 @@
 # doctor/app.py
-# FastAPI entrypoint — gestion du cycle de vie (lifespan) + routes
+# FastAPI entrypoint — lifespan + routes avec authentification
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
-from doctor.config import cfg, Config
+from fastapi import FastAPI, Depends
+from doctor.config import cfg
 from doctor.logger import get_logger
+from doctor.auth import require_api_key
 from doctor.runner import run_full_diagnosis
 
 VERSION = "1.0.0"
@@ -20,10 +21,12 @@ async def lifespan(app: FastAPI):
     logger.info("Log dir       : %s", cfg.LOG_DIR)
     logger.info("Server health : %s", cfg.SERVER_HEALTH_URL)
     logger.info("Ollama        : %s", cfg.OLLAMA_URL)
-    logger.info("Services      : %s", cfg.SYSTEM_SERVICES if hasattr(cfg, 'SYSTEM_SERVICES') else cfg.SYSTEMD_SERVICES)
+    logger.info("Services      : %s", cfg.SYSTEMD_SERVICES)
+    auth_status = "désactivée (dev)" if not cfg.API_KEY else "active"
+    logger.info("Auth          : %s", auth_status)
     logger.info("Doctor prêt ✔")
 
-    yield  # l'app tourne ici
+    yield
 
     # ── SHUTDOWN ─────────────────────────────────────────────
     logger.info("━━━ Neron Doctor — arrêt propre ━━━")
@@ -37,7 +40,7 @@ app = FastAPI(
 )
 
 
-@app.post("/diagnose")
+@app.post("/diagnose", dependencies=[Depends(require_api_key)])
 def diagnose():
     result = run_full_diagnosis()
     return result
