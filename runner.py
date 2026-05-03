@@ -1,15 +1,13 @@
-# app/runner.py
-# Orchestrateur Principal
+# doctor/runner.py
+# Orchestrateur principal — coordonne analyse, tests, fixes
 
 from doctor.analyzer import analyze_project
 from doctor.tester import test_services
 from doctor.fixer import apply_fixes
-
-SERVER_PATH = "/etc/neron/server"
-LLM_PATH = "/etc/neron/llm"
+from doctor.config import cfg
 
 
-def run_full_diagnosis():
+def run_full_diagnosis() -> dict:
     report = {
         "analysis": {},
         "tests": {},
@@ -17,17 +15,17 @@ def run_full_diagnosis():
         "final_status": {}
     }
 
-    # PHASE 1 - ANALYSE
-    report["analysis"]["server"] = analyze_project(SERVER_PATH)
-    report["analysis"]["llm"] = analyze_project(LLM_PATH)
+    # PHASE 1 - ANALYSE STATIQUE
+    report["analysis"]["core"] = analyze_project(cfg.CORE_PATH)
+    report["analysis"]["llm"]  = analyze_project(cfg.LLM_PATH)
 
-    # PHASE 2 - TEST RUN
+    # PHASE 2 - TESTS RUNTIME
     report["tests"] = test_services()
 
-    # PHASE 3 - FIXES AUTO
+    # PHASE 3 - AUTOCORRECTION
     report["fixes"] = apply_fixes(report)
 
-    # PHASE 4 - RE-TEST
+    # PHASE 4 - RE-TEST POST FIX
     report["final_status"] = test_services()
 
     return report

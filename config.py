@@ -41,6 +41,7 @@ class Config:
 
         # ── Chemins ──────────────────────────────────────────
         paths = d.get("paths", {})
+        self.CORE_PATH: str = paths.get("core", "/etc/neron/core")
         self.SERVER_PATH: str = paths.get("server", "/etc/neron/server")
         self.LLM_PATH:    str = paths.get("llm",    "/etc/neron/llm")
         self.LOG_DIR:     str = paths.get("logs",   "/var/log/neron")
