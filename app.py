@@ -17,7 +17,7 @@ from doctor.monitor import (
 )
 from doctor.runner import run_full_diagnosis
 
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 logger = get_logger("doctor.app")
 
 AUTH = [Depends(require_api_key)]
