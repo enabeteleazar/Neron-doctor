@@ -1,33 +1,38 @@
-# app/runner.py
-# Orchestrateur Principal
+# doctor/runner.py
+# Orchestrateur principal — coordonne analyse, tests, fixes, monitoring
 
 from doctor.analyzer import analyze_project
 from doctor.tester import test_services
 from doctor.fixer import apply_fixes
+from doctor.monitor import get_system_metrics, get_all_services_status, get_all_journal_errors
+from doctor.config import cfg
 
-SERVER_PATH = "/etc/neron/server"
-LLM_PATH = "/etc/neron/llm"
 
-
-def run_full_diagnosis():
+def run_full_diagnosis() -> dict:
     report = {
         "analysis": {},
+        "monitor": {},
         "tests": {},
         "fixes": [],
         "final_status": {}
     }
 
-    # PHASE 1 - ANALYSE
-    report["analysis"]["server"] = analyze_project(SERVER_PATH)
-    report["analysis"]["llm"] = analyze_project(LLM_PATH)
+    # PHASE 1 - ANALYSE STATIQUE
+    report["analysis"]["core"] = analyze_project(cfg.CORE_PATH)
+    report["analysis"]["llm"]  = analyze_project(cfg.LLM_PATH)
 
-    # PHASE 2 - TEST RUN
+    # PHASE 2 - MONITORING SYSTÈME
+    report["monitor"]["system"]   = get_system_metrics()
+    report["monitor"]["services"] = get_all_services_status()
+    report["monitor"]["journals"] = get_all_journal_errors()
+
+    # PHASE 3 - TESTS RUNTIME
     report["tests"] = test_services()
 
-    # PHASE 3 - FIXES AUTO
+    # PHASE 4 - AUTOCORRECTION
     report["fixes"] = apply_fixes(report)
 
-    # PHASE 4 - RE-TEST
+    # PHASE 5 - RE-TEST POST FIX
     report["final_status"] = test_services()
 
     return report
