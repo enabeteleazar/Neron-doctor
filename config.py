@@ -10,14 +10,33 @@ YAML_PATH = os.getenv("NERON_CONFIG", "/etc/neron/neron.yaml")
 
 
 def _load_yaml(path: str) -> dict[str, Any]:
-    """Charge le fichier YAML global Néron et retourne la section 'doctor'."""
+    """Charge le fichier YAML global Néron et retourne la section 'doctor'.
+
+    Si le fichier est absent ou invalide, retourne un dictionnaire vide
+    pour permettre de démarrer avec les valeurs par défaut plutôt que
+    de lever une exception (utile en dev/local).
+    """
     if not os.path.exists(path):
-        raise FileNotFoundError(
-            f"Neron config not found: {path}\n"
-            f"Hint: copie neron.yaml.example vers {path} et adapte-le."
+        # Ne pas planter l'application si le fichier de config est absent.
+        # Émettre un avertissement (RuntimeWarning) et retourner les valeurs par défaut.
+        import warnings
+
+        warnings.warn(
+            f"Neron config not found: {path}. Using defaults.", RuntimeWarning
         )
-    with open(path, encoding="utf-8") as f:
-        full = yaml.safe_load(f) or {}
+        return {}
+
+    try:
+        with open(path, encoding="utf-8") as f:
+            full = yaml.safe_load(f) or {}
+    except Exception as e:  # yaml parsing errors, IO errors, etc.
+        import warnings
+
+        warnings.warn(
+            f"Failed to load Neron config {path}: {e}. Using defaults.", RuntimeWarning
+        )
+        full = {}
+
     return full.get("doctor", {})
 
 

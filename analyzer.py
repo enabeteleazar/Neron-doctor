@@ -47,8 +47,19 @@ def analyze_project(path: str) -> dict:
             if f in ENTRYPOINT_NAMES:
                 result["entrypoints"].append(full)
 
-            # Détection fichiers de test
-            if f.endswith(".py") and "test" in f.lower():
+            # Détection fichiers de test (éviter faux positifs)
+            name_lower = f.lower()
+            in_tests_dir = any(part in ("tests", "test") for part in root.lower().split(os.sep))
+            is_test_file = (
+                f.endswith(".py")
+                and (
+                    name_lower.startswith("test_")
+                    or name_lower.endswith("_test.py")
+                    or name_lower == "test.py"
+                    or in_tests_dir
+                )
+            )
+            if is_test_file:
                 result["issues"].append(f"Test file found: {f}")
 
             # Vérification syntaxe

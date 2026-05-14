@@ -36,3 +36,81 @@ def run_full_diagnosis() -> dict:
     report["final_status"] = test_services()
 
     return report
+
+
+# Streaming diagnosis generator (SSE)
+import json
+from typing import Generator
+
+def stream_diagnosis() -> Generator[str, None, None]:
+    """Génère des events Server-Sent Events (SSE) pour chaque phase.
+
+    Chaque yield est une chaîne conforme à text/event-stream.
+    """
+    # start
+    yield f"data: {json.dumps({'phase':'start'})}\n\n"
+
+    # system metrics
+    try:
+        sys_metrics = get_system_metrics()
+        yield f"data: {json.dumps({'phase':'system','data': sys_metrics})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'phase':'system','error': str(e)})}\n\n"
+
+    # services
+    try:
+        services = get_all_services_status()
+        yield f"data: {json.dumps({'phase':'services','data': services})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'phase':'services','error': str(e)})}\n\n"
+
+    # journals
+    try:
+        journals = get_all_journal_errors()
+        yield f"data: {json.dumps({'phase':'journals','data': journals})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'phase':'journals','error': str(e)})}\n\n"
+
+    # analysis
+    try:
+        analysis_core = analyze_project(cfg.CORE_PATH)
+        yield f"data: {json.dumps({'phase':'analysis_core','data': analysis_core})}\n\n"
+        analysis_llm = analyze_project(cfg.LLM_PATH)
+        yield f"data: {json.dumps({'phase':'analysis_llm','data': analysis_llm})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'phase':'analysis','error': str(e)})}\n\n"
+
+    # tests
+    try:
+        tests = test_services()
+        yield f"data: {json.dumps({'phase':'tests','data': tests})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'phase':'tests','error': str(e)})}\n\n"
+
+    # fixes
+    try:
+        fixes = apply_fixes({'tests': tests, 'monitor': {'services': services}})
+        yield f"data: {json.dumps({'phase':'fixes','data': fixes})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'phase':'fixes','error': str(e)})}\n\n"
+
+    # final tests
+    try:
+        final_tests = test_services()
+        yield f"data: {json.dumps({'phase':'final_tests','data': final_tests})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'phase':'final_tests','error': str(e)})}\n\n"
+
+    # verdict
+    try:
+        overall_ok = True
+        try:
+            overall_ok = all(v.get('ok', False) for v in (final_tests or {}).values())
+        except Exception:
+            overall_ok = False
+        verdict = {'status': 'ok' if overall_ok else 'warn'}
+        yield f"data: {json.dumps({'phase':'verdict','data': verdict})}\n\n"
+    except Exception as e:
+        yield f"data: {json.dumps({'phase':'verdict','error': str(e)})}\n\n"
+
+    yield f"data: {json.dumps({'phase':'done'})}\n\n"

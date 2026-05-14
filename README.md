@@ -1,3 +1,5 @@
+[![Python Tests](https://github.com/enabeteleazar/neronOS_doctor/actions/workflows/python-tests.yml/badge.svg)](https://github.com/enabeteleazar/neronOS_doctor/actions/workflows/python-tests.yml)
+
 # Neron Doctor v2
 
 Agent de diagnostic et d'autocorrection pour l'infrastructure Néron.

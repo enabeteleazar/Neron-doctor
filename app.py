@@ -15,9 +15,11 @@ from doctor.monitor import (
     get_all_services_status,
     get_all_journal_errors,
 )
-from doctor.runner import run_full_diagnosis
+from doctor.runner import run_full_diagnosis, stream_diagnosis
+from fastapi.responses import StreamingResponse
+import json
 
-VERSION = "1.1.0"
+VERSION = "2.0.0"
 logger = get_logger("doctor.app")
 
 AUTH = [Depends(require_api_key)]
@@ -107,6 +109,13 @@ def fixes():
         "fixes":  result,
         "status": test_services(),
     }
+
+
+@app.get("/stream", dependencies=AUTH)
+def stream():
+    """Server-Sent Events streaming endpoint for the diagnosis pipeline."""
+    # FastAPI's StreamingResponse accepts a generator yielding strings
+    return StreamingResponse(stream_diagnosis(), media_type="text/event-stream")
 
 
 # ── reload ───────────────────────────────────────────────────────────────

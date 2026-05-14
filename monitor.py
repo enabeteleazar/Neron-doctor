@@ -4,7 +4,15 @@
 import subprocess
 import time
 from typing import Any
-import psutil
+
+# psutil is optional in constrained environments; fall back gracefully
+try:
+    import psutil
+    PSUTIL_AVAILABLE = True
+except Exception:
+    psutil = None  # type: ignore
+    PSUTIL_AVAILABLE = False
+
 from doctor.config import cfg
 from doctor.logger import get_logger
 
@@ -18,11 +26,22 @@ log = get_logger("doctor.monitor")
 def get_system_metrics() -> dict[str, Any]:
     log.debug("Collecting system metrics")
 
+    if not PSUTIL_AVAILABLE:
+        log.warning("psutil not available; returning limited system metrics")
+        return {
+            "psutil_available": False,
+            "cpu": None,
+            "memory": None,
+            "disk": None,
+            "global_status": "unknown",
+        }
+
     cpu = psutil.cpu_percent(interval=1)
     mem = psutil.virtual_memory()
     disk = psutil.disk_usage("/")
 
     metrics = {
+        "psutil_available": True,
         "cpu": {
             "percent": cpu,
             "count": psutil.cpu_count(),
